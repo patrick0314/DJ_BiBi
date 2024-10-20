@@ -1,16 +1,19 @@
 # DJ_BiBi
+
 這是一個簡單的 discord 機器人，包含：音樂、遊戲等等小功能
 
 ## Pre-requisite
 
-1. 下載 python & 對應套件
+1. 下載 python & 對應套件 [requiements](https://github.com/patrick0314/DJ_BiBi/blob/main/requiements.txt)
 ```
-asyncio       3.4.3
-discord.py    2.4.0
-numpy         2.0.2
-Pillow        9.5.0
-pytube        15.0.0
-yt_dlp        2024.8.6
+discord.py     2.4.0
+numpy          2.1.2
+opencv_python  4.10.0.84
+Pillow         9.5.0
+Pillow         11.0.0
+python-dotenv  1.0.1
+pytube         15.0.0
+yt_dlp         2024.10.7
 ```
 
 2. 下載 [ffmpeg](https://ffmpeg.org/download.html#build-windows) ，並加入環境變數中，可參考 [youtube](https://youtu.be/hHfzHVuRx7k?t=150)
@@ -43,6 +46,10 @@ discord_token=<YOUR_DISCORD_TOKEN>
 
 2. 音樂 (Music)
 
+* 可播放 YT 歌曲，包含基本功能：播放、暫停、循環、隨機播放
+
+* 可存取 YT 歌單並隨著 YT 歌單更新
+
 ```
 -(j)oin                : call bot join the vc
 -(p)lay <URL>          : play the song of <URL>
@@ -65,6 +72,12 @@ discord_token=<YOUR_DISCORD_TOKEN>
 ```
 
 3. 遊戲 (Game)
+
+* [1A2B (AB Game)](https://zh.wikipedia.org/zh-tw/1A2B)
+
+* [五子棋 (Gomoku)](https://zh.wikipedia.org/zh-tw/%E4%BA%94%E5%AD%90%E6%A3%8B)
+
+* [機密代號 (Codenames)](https://en.wikipedia.org/wiki/Codenames_(board_game))
 
 ```
 AB Game:
