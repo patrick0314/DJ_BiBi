@@ -42,7 +42,6 @@ async def help(ctx):
 -playlist_help   : help for playlist commands
 -game_help       : help for game commands
 -others_help     : help for others commands
--midjourney_help : help for midjourney commands
 ```
         """
         await ctx.send(embed=embed_base(ctx, description=help_message, color="orange", author=False))
