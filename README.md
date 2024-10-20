@@ -22,7 +22,7 @@ yt_dlp        2024.8.6
 discord_token=<YOUR_DISCORD_TOKEN>
 ```
 
-2. 新增 `playlist` & `tmp` 兩個資料夾供後續機器人使用
+2. 新增 `tmp` 資料夾供後續機器人使用
 
 > 可以自行在程式內增加防呆機制
 
@@ -33,6 +33,25 @@ discord_token=<YOUR_DISCORD_TOKEN>
 0. prefix = `;`
 
 1. 音樂 (Music)
+
+```
+-(j)oin                : call bot join the vc
+-(p)lay <URL>          : play the song of <URL>
+-(q)ueue [num]         : list the top [num] / 10 songs on the playlist
+-repeat                : switch the repeat mode
+-shuffle               : shuffle the playlist
+-pause                 : pause the song
+-resume                : resume the song
+-skip [num]            : skip the [num]-th song in the playlist, 0: playing song
+-clear                 : clear all queue except for playing song
+-stop                  : call bot leave the vc
+
+-(s)ave <name> <url>     : save the YT playlist as <name>
+-(l)ist <name>           : load the pre-saved <name> playlist
+-update <name>           : update the <name>-playlist which is from YT playlist
+
+<> = required information, [] = optional information
+```
 
 2. 遊戲 (Game)
 

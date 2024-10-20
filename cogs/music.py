@@ -20,7 +20,9 @@ class Music(commands.Cog):
         self.repeating = {}
         self.queues = {}
         self.voices = {}
-        self.playlist = json.load(open("./data/playlist.json", "r"))
+
+        if os.path.isfile("./data/playlist.json", "r"): self.playlist = json.load(open("./data/playlist.json", "r"))
+        else: self.playlist = {}
 
     @commands.command(name="join", aliases=["j"])
     async def join(self, ctx):
