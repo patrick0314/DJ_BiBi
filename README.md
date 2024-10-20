@@ -55,7 +55,9 @@ discord_token=<YOUR_DISCORD_TOKEN>
 -clear                 : clear all queue except for playing song
 -stop                  : call bot leave the vc
 
+-lists                   : list and update all saved playlist
 -(s)ave <name> <url>     : save the YT playlist as <name>
+-unsave <name>           : delete the <name> playlist
 -(l)ist <name>           : load the pre-saved <name> playlist
 -update <name>           : update the <name>-playlist which is from YT playlist
 
@@ -64,4 +66,27 @@ discord_token=<YOUR_DISCORD_TOKEN>
 
 3. 遊戲 (Game)
 
+```
+AB Game:
+-abstart           : start the AB game
+-(g)uess <number>  : guess the 4-digit number
+
+Gomoku:
+-gostart           : start the Gomoku
+-place <x> <y>     : place at (x, y)
+
+Codenames:
+-codestart         : start the Codenames
+-host              : host use this command to get the answer
+-code <code>       : guess <code> be author's team code
+
+<> = required information, [] = optional information
+```
+
 4. 其他 (Others)
+
+```
+-card <name> [title] [descirption] [url] : send the embedded card to <name> with [title] [description] [image url]
+
+<> = required information, [] = optional information
+```
