@@ -30,9 +30,18 @@ discord_token=<YOUR_DISCORD_TOKEN>
 
 ## Function
 
-0. prefix = `;`
+1. 主要 (Main)
 
-1. 音樂 (Music)
+* 此機器人的前綴 (prefix) 為 `;`
+
+```
+-load <cog>     : load the <cog> extension
+-unload <cog>   : un-load the <cog> extension
+-reload <cog>   : re-load the <cog> extension
+-help           : help message
+```
+
+2. 音樂 (Music)
 
 ```
 -(j)oin                : call bot join the vc
@@ -53,6 +62,6 @@ discord_token=<YOUR_DISCORD_TOKEN>
 <> = required information, [] = optional information
 ```
 
-2. 遊戲 (Game)
+3. 遊戲 (Game)
 
-3. 其他 (Others)
+4. 其他 (Others)
