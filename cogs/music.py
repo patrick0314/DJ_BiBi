@@ -21,7 +21,7 @@ class Music(commands.Cog):
         self.queues = {}
         self.voices = {}
 
-        if os.path.isfile("./data/playlist.json", "r"): self.playlist = json.load(open("./data/playlist.json", "r"))
+        if os.path.isfile("./data/playlist.json"): self.playlist = json.load(open("./data/playlist.json", "r"))
         else: self.playlist = {}
 
     @commands.command(name="join", aliases=["j"])
@@ -199,6 +199,22 @@ class Music(commands.Cog):
         except Exception as e:
             print(e)
 
+    @commands.command(name="lists")
+    async def lists(self, ctx):
+        try:
+            if self.playlist == {}:
+                await ctx.send(embed=embed_base(ctx, title="There is no playlist.", color="red", author=False))
+                raise
+
+            list_message = ""
+            for i, name in enumerate(self.playlist.keys()):
+                list_message += f"{i+1}. {name}\n"
+                await self.fetchList(name)
+            await ctx.send(embed=embed_base(ctx, title="Playlist:", description=list_message, color="orange", author=False))
+        except Exception as e:
+            print(e)
+
+
     @commands.command(name="save", aliases=["s"])
     async def save(self, ctx, name, url):
         try:
@@ -220,6 +236,21 @@ class Music(commands.Cog):
             await ctx.send(embed=embed_base(ctx, title=f"Supervise {name} Successfully", color="green", author=False))
         except Exception as e:
             print(e)
+
+    @commands.command(name="unsave")
+    async def unsave(self, ctx, name):
+        try:
+            # Check YT list exists or not
+            if name not in self.playlist:
+                await ctx.send(embed=embed_base(ctx, title=f"There is no playlist named {name}.", color="red", author=False))
+                raise
+
+            # Delete playlist
+            del self.playlist[name]
+            await ctx.send(embed=embed_base(ctx, title=f"Remove the playlist named {name}.", color="red", author=False))
+        except Exception as e:
+            print(e)
+
 
     @commands.command(name="list", aliases=["l"])
     async def list(self, ctx, name):
@@ -289,7 +320,9 @@ class Music(commands.Cog):
 -clear                 : clear all queue except for playing song
 -stop                  : call bot leave the vc
 
+-lists                   : list and update all saved playlist
 -(s)ave <name> <url>     : save the YT playlist as <name>
+-unsave <name>           : delete the <name> playlist
 -(l)ist <name>           : load the pre-saved <name> playlist
 -update <name>           : update the <name>-playlist which is from YT playlist
 
