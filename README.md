@@ -1,10 +1,14 @@
 # DJ_BiBi
 
-這是一個簡單的 discord 機器人，包含：音樂、遊戲等等小功能
+This project, DJ_BiBi, is a custom Discord bot that enhances servers with music and interactive games.
+
+It allows users to play music directly from YouTube, manage playlists, and control playback with commands. Additionally, it offers multiplayer games like 1A2B, Gomoku, and Codenames, providing both entertainment and music streaming features in one bot.
+
+Ideal for social gaming or collaborative playlists, DJ_BiBi adds fun and functionality to any Discord community.
 
 ## Pre-requisite
 
-1. 下載 python & 對應套件 [requiements](https://github.com/patrick0314/DJ_BiBi/blob/main/requirements.txt)
+1. Download Python & install the required packages [requiements](https://github.com/patrick0314/DJ_BiBi/blob/main/requirements.txt)
 ```
 discord.py     2.4.0
 numpy          2.1.2
@@ -16,26 +20,26 @@ pytube         15.0.0
 yt_dlp         2024.10.7
 ```
 
-2. 下載 [ffmpeg](https://ffmpeg.org/download.html#build-windows) ，並加入環境變數中，可參考 [youtube](https://youtu.be/hHfzHVuRx7k?t=150)
+2. Download [FFmpeg](https://ffmpeg.org/download.html#build-windows) and add it to your system's PATH. You can refer to [YouTube tutorials](https://youtu.be/hHfzHVuRx7k?t=150) for guidance
 
 ## Usage
 
-1. git clone repository 後，新增一個資料夾 `env`，並在此資料夾內新增 `password.env`，填入你的 discord bot token
+1. After cloning the repository, create a folder named `env` and add a file called `password.env` inside it. In this file, enter your Discord bot token
 ```
 discord_token=<YOUR_DISCORD_TOKEN>
 ```
 
-2. 新增 `tmp` 資料夾供後續機器人使用
+2. Create a `tmp folder` for the bot's future use
 
-> 可以自行在程式內增加防呆機制
+> You can add your own fail-safe mechanisms to the program
 
-3. 執行 `python main.py`
+3. Execute `python main.py`
 
 ## Function
 
-1. 主要 (Main)
+1. Main
 
-* 此機器人的前綴 (prefix) 為 `;`
+* The prefix for this bot is `;`
 
 ```
 -load <cog>     : load the <cog> extension
@@ -44,11 +48,11 @@ discord_token=<YOUR_DISCORD_TOKEN>
 -help           : help message
 ```
 
-2. 音樂 (Music)
+2. Music
 
-* 可播放 YT 歌曲，包含基本功能：播放、暫停、循環、隨機播放
+* This bot can play YouTube songs with basic functionalities, including play, pause, loop, and shuffle
 
-* 可存取 YT 歌單並隨著 YT 歌單更新
+* This bot can access YouTube playlists and update in accordance with changes to the playlists
 
 ```
 -(j)oin                : call bot join the vc
@@ -71,7 +75,7 @@ discord_token=<YOUR_DISCORD_TOKEN>
 <> = required information, [] = optional information
 ```
 
-3. 遊戲 (Game)
+3. Game
 
 * [1A2B (AB Game)](https://zh.wikipedia.org/zh-tw/1A2B)
 
@@ -96,7 +100,7 @@ Codenames:
 <> = required information, [] = optional information
 ```
 
-4. 其他 (Others)
+4. Others
 
 ```
 -card <name> [title] [descirption] [url] : send the embedded card to <name> with [title] [description] [image url]
