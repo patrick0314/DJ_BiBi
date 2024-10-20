@@ -1,13 +1,13 @@
 import os
+import json
 import random
 import asyncio
 import discord
 import datetime
 
 from pytube import Playlist
-from dotenv import dotenv_values
+from discord.ext import commands
 from utility.embed import embed_base
-from discord.ext import commands, tasks
 from utility.utils_const import ytdl, ffmpeg_options
 
 class Music(commands.Cog):
@@ -20,10 +20,7 @@ class Music(commands.Cog):
         self.repeating = {}
         self.queues = {}
         self.voices = {}
-        self.playlist = dotenv_values(dotenv_path="./env/playlist.env")
-
-        # Start fetch
-        self.updateRoutine.start()
+        self.playlist = json.load(open("./data/playlist.json", "r"))
 
     @commands.command(name="join", aliases=["j"])
     async def join(self, ctx):
@@ -201,32 +198,33 @@ class Music(commands.Cog):
             print(e)
 
     @commands.command(name="save", aliases=["s"])
-    async def save(self, ctx, name, mode=None):
+    async def save(self, ctx, name, url):
         try:
-            # Set the write mode, "r": new file, "a": add below
-            if mode == "clear": mode = "w"
-            elif os.path.exists(f"./playlist/{name}.txt"): mode = "a"
-            else: mode = "w"
-
-            # Save
-            save_message = ""
-            with open(f"./playlist/{name}.txt", mode) as f:
-                f.write(self.playing[ctx.guild.id][0] + "\n")
-                save_message += (self.playing[ctx.guild.id][2] + "\n")
-                for i in range(len(self.queues[ctx.guild.id])):
-                    f.write(self.queues[ctx.guild.id][i][0] + "\n")
-                    save_message += (f"{i+1}. " + self.queues[ctx.guild.id][i][2] + "\n")
+            # Check set already or not YT list
+            if name in self.playlist:
+                await ctx.send(embed=embed_base(ctx, title=f"There is already a playlist named {name}.", color="red", author=False))
+                raise
+            elif "&list=" not in url:
+                await ctx.send(embed=embed_base(ctx, title="Not YT list.", color="red", author=False))
+                raise
             
-            await ctx.send(embed=embed_base(ctx, title=f"Save the song below into {name}", description=save_message, color="green", author=False))
+            # Add new playlist in playlist.env
+            self.playlist[name] = {
+                "url": url,
+                "song": []
+            }
+            await self.fetchList(name)
+
+            await ctx.send(embed=embed_base(ctx, title=f"Supervise {name} Successfully", color="green", author=False))
         except Exception as e:
             print(e)
 
     @commands.command(name="list", aliases=["l"])
     async def list(self, ctx, name):
         try:
-            # Check file exists or not
-            if not os.path.exists(f"./playlist/{name}.txt"):
-                await ctx.send(embed=embed_base(ctx, title=f"BiBi do not find the playlist called {name}.", color="red", author=False))
+            # Check YT list exists or not
+            if name not in self.playlist:
+                await ctx.send(embed=embed_base(ctx, title=f"There is no playlist named {name}.", color="red", author=False))
                 raise
             # Check if bot in vc or not
             if ctx.guild.id not in self.voices:
@@ -236,91 +234,39 @@ class Music(commands.Cog):
             # Load playlist
             await ctx.send(embed=embed_base(ctx, title=f"Start add songs in {name}.", color="green", author=False))
 
-            f = open(f"./playlist/{name}.txt")
-            for line in f.readlines():
-                await self.play(ctx, line[:-1], claim=False)
-                await asyncio.sleep(1)
+            for song in self.playlist[name]["song"]:
+                await self.play(ctx, song, claim=False)
+                await asyncio.sleep(0.1)
                 if ctx.guild.id not in self.voices or not self.voices[ctx.guild.id].is_playing(): raise
-            f.close()
-        except Exception as e:
-            print(e)
-
-    @commands.command(name="supervise")
-    async def supervise(self, ctx, name, url):
-        try:
-            # Check set already or not YT list
-            if name in self.playlist:
-                await ctx.send(embed=embed_base(ctx, title="Have supervised.", color="red", author=False))
-                raise
-            elif "&list=" not in url:
-                await ctx.send(embed=embed_base(ctx, title="Not YT list.", color="red", author=False))
-                raise
-            
-            # Add new playlist in playlist.env
-            with open("./env/playlist.env", "a") as f:
-                f.write(f"{name} = {url}\n")
-            f.close()
-            await self.fetchList(url, name)
-            self.playlist = dotenv_values(dotenv_path="./env/playlist.env")
-
-            await ctx.send(embed=embed_base(ctx, title=f"Supervise {name} Successfully", color="green", author=False))
-        except Exception as e:
-            print(e)
-    
-    @commands.command(name="unsupervise")
-    async def unsupervise(self, ctx, name):
-        try:
-            if name not in self.playlist:
-                await ctx.send(embed=embed_base(ctx, title="No this playlist.", color="red", author=False))
-                raise
-
-            # Delete <name>-playlist
-            with open("./env/playlist.env", "r") as f:
-                lines = f.readlines()
-            f.close()
-            with open("./env/playlist.env", "w") as f:
-                for line in lines:
-                    if line.split(" ")[0] == name: continue
-                    else: f.write(line)
-            f.close()
-            os.remove(f"./playlist/{name}.txt")
-            self.playlist = dotenv_values(dotenv_path="./env/playlist.env")
-
-            await ctx.send(embed=embed_base(ctx, title=f"Unsupervise {name} Successfully", color="green", author=False))
         except Exception as e:
             print(e)
     
     @commands.command(name="update")
     async def update(self, ctx, name):
         try:
+            # Check YT list exists or not
+            if name not in self.playlist:
+                await ctx.send(embed=embed_base(ctx, title=f"There is no playlist named {name}.", color="red", author=False))
+                raise
+
             # Update <name>-playlist
-            await self.fetchList(self.playlist[name], name)
+            await self.fetchList(name)
 
             await ctx.send(embed=embed_base(ctx, title=f"Update {name} Successfully", color="green", author=False))
         except Exception as e:
             print(e)
-
-    @tasks.loop(time=everyday)
-    async def updateRoutine(self):
-        try:
-            # Fetch all playlist
-            for key in self.playlist.keys():
-                await self.fetchList(self.playlist[key], key)
-        except Exception as e:
-            print(e)
     
-    async def fetchList(self, url, name):
+    async def fetchList(self, name):
         try:
             # Get all url
-            songs = Playlist(url)
+            songs = Playlist(self.playlist[name]["url"])
             songs = songs.video_urls
 
             # Save playlist
-            output = os.path.join("./playlist", f"{name}.txt")
-            with open(output, "w") as f:
-                for song in songs:
-                    f.write(str(song) + "\n")
-            f.close()
+            self.playlist[name]["song"].clear()
+            for song in songs:
+                self.playlist[name]["song"].append(song)
+            json.dump(self.playlist, open("./data/playlist.json", "w"), indent=2)
         except Exception as e:
             print(e)
     
@@ -341,10 +287,8 @@ class Music(commands.Cog):
 -clear                 : clear all queue except for playing song
 -stop                  : call bot leave the vc
 
--(s)ave <name>           : save the current playlist into <name> playlist
+-(s)ave <name> <url>     : save the YT playlist as <name>
 -(l)ist <name>           : load the pre-saved <name> playlist
--supervise <name> <url>  : save the YT playlist as <name>-playlist
--unsupervise <name>      : delete the <name>-playlist
 -update <name>           : update the <name>-playlist which is from YT playlist
 
 <> = required information, [] = optional information

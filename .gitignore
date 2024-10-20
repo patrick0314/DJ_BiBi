@@ -1,4 +1,11 @@
+# FOLDER
+
 tmp/
 env/
 ffmpeg/
-playlist/
+*/__pycache__/
+
+# FILES
+
+data/playlist.json
+tmp.py
