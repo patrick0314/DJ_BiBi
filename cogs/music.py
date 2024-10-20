@@ -116,17 +116,17 @@ class Music(commands.Cog):
         except Exception as e:
             print(e)
 
-    @commands.command(name="repeat")
-    async def repeat(self, ctx):
+    @commands.command(name="loop")
+    async def loop(self, ctx):
         try:
             if self.repeating[ctx.guild.id]:
                 self.repeating[ctx.guild.id] = False
 
-                await ctx.send(embed=embed_base(ctx, title="Repeat Disabled", color="red"))
+                await ctx.send(embed=embed_base(ctx, title="Loop Disabled", color="red"))
             else:
                 self.repeating[ctx.guild.id] = True
 
-                await ctx.send(embed=embed_base(ctx, title="Repeat Enabled", color="green"))
+                await ctx.send(embed=embed_base(ctx, title="Loop Enabled", color="green"))
         except Exception as e:
             print(e)
     
@@ -312,7 +312,7 @@ class Music(commands.Cog):
 -(j)oin                : call bot join the vc
 -(p)lay <URL>          : play the song of <URL>
 -(q)ueue [num]         : list the top [num] / 10 songs on the playlist
--repeat                : switch the repeat mode
+-loop                  : switch the loop mode
 -shuffle               : shuffle the playlist
 -pause                 : pause the song
 -resume                : resume the song
