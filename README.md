@@ -4,7 +4,7 @@
 
 ## Pre-requisite
 
-1. 下載 python & 對應套件 [requiements](https://github.com/patrick0314/DJ_BiBi/blob/main/requiements.txt)
+1. 下載 python & 對應套件 [requiements](https://github.com/patrick0314/DJ_BiBi/blob/main/requirements.txt)
 ```
 discord.py     2.4.0
 numpy          2.1.2
