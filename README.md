@@ -29,7 +29,7 @@ yt_dlp         2024.10.7
 discord_token=<YOUR_DISCORD_TOKEN>
 ```
 
-2. Create a `tmp folder` for the bot's future use
+2. Create a `tmp` folder for the bot's future use
 
 > You can add your own fail-safe mechanisms to the program
 
