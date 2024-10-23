@@ -8,7 +8,7 @@ import datetime
 from pytube import Playlist
 from discord.ext import commands
 from utility.embed import embed_base
-from utility.utils_const import ytdl, ffmpeg_options
+from utility.music_const import ytdl, ffmpeg_options
 
 class Music(commands.Cog):
     tz = datetime.timezone(datetime.timedelta(hours=8))
