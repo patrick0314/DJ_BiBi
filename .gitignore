@@ -8,4 +8,5 @@ ffmpeg/
 # FILES
 
 data/playlist.json
+data/pokemon.json
 tmp.py

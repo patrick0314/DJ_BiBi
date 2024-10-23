@@ -1,42 +1,25 @@
-playerStatus = {
-    # User Info
-    "name": None,
+from utility.pokemon_utility import create_pokemon, create_item
 
-    # Bag
-    "bag": {},
+#####################################################################
+###                            Pokedex                            ###
+#####################################################################
 
-    # Pokemon
-    "pokemon": {},
+Pokemons = {
+    "Bulbasaur": create_pokemon("Bulbasaur", 1, 1, 100, 12, 10),
+    "Ivysaur": create_pokemon("Ivysaur", 2, 18, 143, 24, 20),
+    "Venusaur": create_pokemon("Venusaur", 3, 36, 196, 42, 36),
+    "Charmander": create_pokemon("Charmander", 4, 1, 90, 14, 8),
+    "Charmeleon": create_pokemon("Charmeleon", 5, 18, 135, 28, 17),
+    "Charizard": create_pokemon("Charizard", 6, 36, 188, 48, 33),
+    "Squirtle": create_pokemon("Squirtle", 7, 1, 110, 10, 12),
+    "Wartortle": create_pokemon("Wartortle", 8, 18, 157, 20, 24),
+    "Blastoise": create_pokemon("Blastoise", 9, 36, 212, 36, 42)
 }
 
-pokemonStatus = {
-    # Pokemon Info
-    "name": None,
+#####################################################################
+###                            Itemdex                            ###
+#####################################################################
 
-    # Basic Board
-    "level": 1,
-    "exp":   0,
-
-    # Fighting Board
-    "hp": 100,
-    "atk": 10,
-    "dfs": 10,
-
-    # Equipment
-    "eqp": None,
-}
-
-def create_pokemon(name, level, hp, atk, dfs, eqp=None):
-    pokemon = pokemonStatus.copy()
-    pokemon["name"] = name
-    pokemon["level"] = level
-    pokemon["hp"] = hp
-    pokemon["atk"] = atk
-    pokemon["dfs"] = dfs
-    return pokemon
-
-initPokemons = {
-    "Bulbasaur": create_pokemon("Bulbasaur", 1, 100, 12, 10),
-    "Charmander": create_pokemon("Charmander", 1, 90, 14, 8),
-    "Squirtle": create_pokemon("Squirtle", 1, 110, 10, 12),
+Items = {
+    "Potion": create_item("Potion", 1, 0, 0, 0, 0),
 }
