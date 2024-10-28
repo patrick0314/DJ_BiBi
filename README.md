@@ -107,3 +107,39 @@ Codenames:
 
 <> = required information, [] = optional information
 ```
+
+5. Pokemon Roguelike
+
+### Main Menu
+
+Using the command `;pokemon` opens the main page, which has four options:
+
+1. Create a new character
+2. Check your own pokemons
+3. Check your own item
+4. Play Roguelike
+
+### Create a new character
+
+Each user can only create a character once.
+
+When creating a character, users can choose from Bulbasaur, Charmander, or Squirtle.
+
+### Check your own pokemons
+
+Users can navigate through the pages using "previous" or "next" and select a Pokémon on the current page to view its detailed information.
+
+### Check your own item
+
+Users can navigate through the pages using "previous" or "next" and select an item on the current page to view its detailed information.
+
+### Play Roguelike
+
+This is a Pokémon-themed Discord mini-game that combines Pokémon battles with Roguelike elements.
+
+1. Players explore randomly generated dungeons, encountering different Pokémon, items, and room layouts each time they enter.
+2. Players can choose Pokémon as partners for battles and collect rare items and Pokémon during their adventure.
+3. As the adventure progresses, the difficulty gradually increases, and players may face powerful bosses.
+4. If all Pokémon are defeated, the player must start over.
+
+Players' progress and achievements will be displayed on a leaderboard, challenging them to push their limits!
