@@ -1,3 +1,5 @@
+import random
+
 ####################################################################
 ###                          Basic Info                          ###
 ####################################################################
@@ -5,9 +7,6 @@
 playerStatus = {
     # User Info
     "name": None,
-
-    # Item
-    "item": [],
 
     # Pokemon
     "pokemon": [],
@@ -18,50 +17,18 @@ pokemonStatus = {
     "name": None,
     "id": None,
 
-    # Basic Board
-    "level": 1,
-    "exp":   0,
-
     # Fighting Board
     "hp": 100,
     "atk": 10,
-    "dfs": 10,
-
-    # Equipment
-    "eqp": None,
 }
 
-itemStatus = {
-    # Pokemon Info
-    "name": None,
-    "id": None,
-
-    # 
-    "exp": 0,
-    "hp": 0,
-    "atk": 0,
-    "dfs": 0,
-}
-
-def create_pokemon(name, id, level, hp, atk, dfs, eqp=None):
+def create_pokemon(name, id, hp, atk):
     pokemon = pokemonStatus.copy()
     pokemon["name"] = name
     pokemon["id"] = id
-    pokemon["level"] = level
     pokemon["hp"] = hp
     pokemon["atk"] = atk
-    pokemon["dfs"] = dfs
     return pokemon
-
-def create_item(name, id, exp, hp, atk, dfs):
-    item = itemStatus.copy()
-    item["name"] = name
-    item["id"] = id
-    item["exp"] = exp
-    item["hp"] = hp
-    item["atk"] = atk
-    item["dfs"] = dfs
-    return item
 
 def printList(idx, li, num=5):
     n_pokemon = len(li) - idx
@@ -76,3 +43,32 @@ def printBoard(idx, dt, ignore):
         if key in ignore: continue
         msg += f"\t{key}  : {dt[idx][key]}\n"
     return msg
+
+class DungeonRoom:
+    def __init__(self, room_type):
+        self.room_type = room_type
+
+    def trigger_event(self):
+        return self.room_type
+
+class RoguelikeDungeon:
+    def __init__(self, num_rooms=100):
+        self.rooms = []
+        self.num_rooms = num_rooms
+        self.generate_dungeon()
+    
+    def generate_dungeon(self):
+        room_types = ["battle", "treasure"]
+        for i in range(1, self.num_rooms + 1):
+            if (i % 10 == 0): room_type = "boss"
+            else: room_type = random.choice(room_types)
+            self.rooms.append(DungeonRoom(room_type))
+
+    def print_dungeon(self):
+        for i in range(self.num_rooms):
+            print(self.rooms[i], end=" ")
+            if (i % 10 == 0): print("", end="\n")
+
+    def get_next_room(self):
+        if self.rooms: return self.rooms.pop(0)
+        return None
