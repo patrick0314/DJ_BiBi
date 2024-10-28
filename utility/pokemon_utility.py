@@ -52,7 +52,7 @@ class DungeonRoom:
         return self.room_type
 
 class RoguelikeDungeon:
-    def __init__(self, num_rooms=100):
+    def __init__(self, num_rooms=10):
         self.rooms = []
         self.num_rooms = num_rooms
         self.generate_dungeon()

@@ -252,9 +252,10 @@ class Pokemon(commands.Cog):
             class RoguelikeMenuView(View):
                 def __init__(self, parent: Pokemon, interaction: discord.Interaction, idx):
                     super().__init__(timeout=60)
+                    print("===> init")
                     self.parent = parent
                     self.idx = idx
-                    self.checkButton(interaction)
+                    #self.checkButton(interaction)
 
                 def checkButton(self, interaction: discord.Interaction):
                     # Check if each button should be disabled or not
@@ -305,7 +306,7 @@ class Pokemon(commands.Cog):
                     self.idx -= 5
                     self.checkButton(interaction)
                     msg = "You can choose one of your Pokémon to accompany you on this dungeon adventure.\n"
-                    msg = printList(idx=self.idx, li=self.parent.playerList[str(interaction.user.id)]["item"])
+                    msg = printList(idx=self.idx, li=self.parent.playerList[str(interaction.user.id)]["pokemon"])
                     await interaction.response.edit_message(embed=embed_base(interaction, title="Welcome to the dungeon!", description=dedent(msg), color="green", author=False), view=self)
 
                 @discord.ui.button(label="Next Page →", row=1, style=discord.ButtonStyle.secondary)
@@ -313,7 +314,7 @@ class Pokemon(commands.Cog):
                     self.idx += 5
                     self.checkButton(interaction)
                     msg = "You can choose one of your Pokémon to accompany you on this dungeon adventure.\n"
-                    msg = printList(idx=self.idx, li=self.parent.playerList[str(interaction.user.id)]["item"])
+                    msg = printList(idx=self.idx, li=self.parent.playerList[str(interaction.user.id)]["pokemon"])
                     await interaction.response.edit_message(embed=embed_base(interaction, title="Welcome to the dungeon!", description=dedent(msg), color="green", author=False), view=self)
 
             # Display
@@ -340,7 +341,8 @@ class Pokemon(commands.Cog):
                     self.mode = None
 
                     # Button Init
-                    self.disableMode(mode=True)
+                    self.rock.disabled = self.paper.disabled = self.scissors.disabled = True
+                    self.next_room_button.disabled = self.exit_button.disabled = False
 
                     # Battle Info
                     self.enemy = None
@@ -363,14 +365,16 @@ class Pokemon(commands.Cog):
                     self.rock.disabled = self.paper.disabled = self.scissors.disabled = True if mode else False
                     self.next_room_button.disabled = self.exit_button.disabled = False if mode else True
 
-                async def battle(self):
-                    numEnemy = (self.enemy["hp"] - self.deHP_enemy) // self.enemy["hp"] * 10
-                    numPlayer = (self.maxHP - self.deHP_player) // self.maxHP * 10
+                def battle(self):
+                    numEnemy = (self.enemy["hp"] - self.deHP_enemy) * 10 // self.enemy["hp"]
+                    numPlayer = (self.maxHP - self.deHP_player) * 10 // self.maxHP
+                    print("==>", self.enemy["hp"], self.deHP_enemy, numEnemy)
+                    print("==>", self.maxHP, self.deHP_player, numPlayer)
                     msg = f"""
-                            {self.enemy['name']} [{'#'*numEnemy+' '*(10-numEnemy)}] {self.enemy["hp"]-self.deHP_enemy} / {self.enemy["hp"]}
+{self.enemy['name']} [{'●'*numEnemy}{'○'*(10-numEnemy)}] {self.enemy["hp"]-self.deHP_enemy} / {self.enemy["hp"]}
                     
                     
-[{'#'*numPlayer+' '*(10-numPlayer)}] {self.maxHP-self.deHP_player} / {self.maxHP}
+{self.player["pokemon"][self.idx]["name"]} [{'●'*numPlayer}{'○'*(10-numPlayer)}] {self.maxHP-self.deHP_player} / {self.maxHP}
                     """
                     return msg
                 
@@ -384,21 +388,20 @@ class Pokemon(commands.Cog):
                             elif enemy_moves == 2: self.deHP_enemy += self.player["pokemon"][self.idx]["atk"]; title = "You won!"
 
                             # Display
-                            if self.deHP_player == self.maxHP:
-                                self.disableAll()
+                            if self.deHP_player >= self.maxHP:
+                                await self.disableAll()
                                 title = "Game over"
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="red", author=False), view=self)
-                            elif self.deHP_enemy == self.enemy["hp"]:
-                                self.disableMode(mode=True)
+                            elif self.deHP_enemy >= self.enemy["hp"]:
+                                await self.disableMode(mode=True)
                                 title = f"You defeat {self.enemy['name']}"
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="red", author=False), view=self)
                             else:
                                 msg = self.battle()
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, description=msg, color="green", author=False), view=self)
                         elif self.mode == "treasure":
-                            self.disableMode(mode=True)
+                            await self.disableMode(mode=True)
                             self.maxHP += self.HPbuff
-                            self.player["pokemon"][self.idx]["hp"] += self.HPbuff
                             title = f"{self.player['pokemon'][self.idx]['name']} receives a HP ({self.HPbuff}) buff."
                             await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="green", author=False), view=self)
                     except Exception as e:
@@ -415,19 +418,19 @@ class Pokemon(commands.Cog):
                             elif enemy_moves == 2: self.deHP_player += self.enemy["atk"]; title = "You lost!"
 
                             # Display
-                            if self.deHP_player == self.maxHP:
-                                self.disableAll()
+                            if self.deHP_player >= self.maxHP:
+                                await self.disableAll()
                                 title = "Game over"
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="red", author=False), view=self)
-                            elif self.deHP_enemy == self.enemy["hp"]:
-                                self.disableMode(mode=True)
+                            elif self.deHP_enemy >= self.enemy["hp"]:
+                                await self.disableMode(mode=True)
                                 title = f"You defeat {self.enemy['name']}"
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="red", author=False), view=self)
                             else:
                                 msg = self.battle()
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, description=msg, color="green", author=False), view=self)
                         elif self.mode == "treasure":
-                            self.disableMode(mode=True)
+                            await self.disableMode(mode=True)
                             self.player["pokemon"][self.idx]["atk"] += self.ATKbuff
                             title = f"{self.player['pokemon'][self.idx]['name']} receives a ATK ({self.ATKbuff}) buff."
                             await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="green", author=False), view=self)
@@ -439,68 +442,77 @@ class Pokemon(commands.Cog):
                     try:
                         if self.mode == "battle":
                             enemy_moves = random.randint(0, 2)
-                            if enemy_moves == 0: self.deHP_player += self.enemy["atk"]; title = "You won!"
-                            elif enemy_moves == 1: self.deHP_enemy += self.player["pokemon"][self.idx]["atk"]; title = "You lost!"
+                            if enemy_moves == 0: self.deHP_enemy += self.player["pokemon"][self.idx]["atk"]; title = "You won!"
+                            elif enemy_moves == 1: self.deHP_player += self.enemy["atk"]; title = "You lost!"
+                            elif enemy_moves == 2: pass; title = "It's a tie!"
 
                             # Display
-                            if self.deHP_player == self.maxHP:
-                                self.disableAll()
+                            if self.deHP_player >= self.maxHP:
+                                await self.disableAll()
                                 title = "Game over"
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="red", author=False), view=self)
-                            elif self.deHP_enemy == self.enemy["hp"]:
-                                self.disableMode(mode=True)
+                            elif self.deHP_enemy >= self.enemy["hp"]:
+                                await self.disableMode(mode=True)
                                 title = f"You defeat {self.enemy['name']}"
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="red", author=False), view=self)
                             else:
                                 msg = self.battle()
                                 await interaction.response.edit_message(embed=embed_base(interaction, title=title, description=msg, color="green", author=False), view=self)
                         elif self.mode == "treasure":
-                            self.disableMode(mode=True)
-                            self.player["pokemon"][self.idx]["hp"] += self.bothbuff
+                            await self.disableMode(mode=True)
+                            self.maxHP += self.bothbuff
                             self.player["pokemon"][self.idx]["atk"] += self.bothbuff
                             title = f"{self.player['pokemon'][self.idx]['name']} receives a HP & ATK ({self.bothbuff}) buff."
                             await interaction.response.edit_message(embed=embed_base(interaction, title=title, color="green", author=False), view=self)
                     except Exception as e:
                         print(e)
-                
+                        
                 @discord.ui.button(label="Next Room", row=1, style=discord.ButtonStyle.secondary)
                 async def next_room_button(self, interaction: discord.Interaction, button):
-                    self.layer += 1
-                    self.room = self.dungeon.get_next_room()
-                    self.mode = self.room.trigger_event()
-                    if self.mode == "battle":
-                        self.disableMode(mode=False)
-                        self.enemy = Pokemons[random.choice(list(Pokemons.keys()))]
-                        self.enemy["hp"] += self.layer * 3
-                        self.enemy["atk"] += self.layer * 3
-                        msg = self.battle()
-                        await interaction.response.edit_message(embed=embed_base(interaction, description=msg, color="green", author=False), view=self)
-                    elif self.mode == "treasure":
-                        self.disableMode(mode=False)
-                        self.HPbuff = random.randint(self.layer, self.layer+12)
-                        self.ATKbuff = random.randint(self.layer, self.layer+8)
-                        self.bothbuff = random.randint(self.layer, self.layer+4)
-                        msg = f"""
-                        1.  HP buffer      : {self.HPbuff} → rock
-                        2. ATK buffer      : {self.ATKbuff} → paper
-                        3. HP + ATK buffer : {self.bothbuff} → scissors
-                        """
-                        await interaction.response.edit_message(embed=embed_base(interaction, description=dedent(msg), color="green", author=False), view=self)
-                    elif self.mode == "boss":
-                        self.disableMode(mode=False)
-                        self.enemy = Pokemons[random.choice(list(Pokemons.keys()))]
-                        self.enemy["hp"] += self.layer * 10
-                        self.enemy["atk"] += self.layer * 10
-                        msg = self.battle()
-                        await interaction.response.edit_message(embed=embed_base(interaction, description=msg, color="green", author=False), view=self)
+                    try:
+                        self.layer += 1
+                        self.room = self.dungeon.get_next_room()
+                        self.mode = self.room.trigger_event()
+                        self.deHP_enemy = 0
+                        if self.mode == "battle":
+                            await self.disableMode(mode=False)
+                            self.enemy = Pokemons[random.choice(list(Pokemons.keys()))]
+                            self.enemy["hp"] += self.layer * 2
+                            self.enemy["atk"] += self.layer * 2
+                            msg = self.battle()
+                            await interaction.response.edit_message(embed=embed_base(interaction, description=msg, color="green", author=False), view=self)
+                        elif self.mode == "treasure":
+                            await self.disableMode(mode=False)
+                            self.HPbuff = random.randint(self.layer, self.layer+12)
+                            self.ATKbuff = random.randint(self.layer, self.layer+8)
+                            self.bothbuff = random.randint(self.layer, self.layer+4)
+                            msg = f"""
+                            1.  HP buffer      : {self.HPbuff} → rock
+                            2. ATK buffer      : {self.ATKbuff} → paper
+                            3. HP + ATK buffer : {self.bothbuff} → scissors
+                            """
+                            await interaction.response.edit_message(embed=embed_base(interaction, description=dedent(msg), color="green", author=False), view=self)
+                        elif self.mode == "boss":
+                            await self.disableMode(mode=False)
+                            self.enemy = Pokemons[random.choice(list(Pokemons.keys()))]
+                            self.enemy["hp"] += self.layer * 10
+                            self.enemy["atk"] += self.layer * 10
+                            msg = self.battle()
+                            await interaction.response.edit_message(embed=embed_base(interaction, description=msg, color="green", author=False), view=self)
+                    except Exception as e:
+                        print(e)
                 
                 @discord.ui.button(label="Exit", row=1, style=discord.ButtonStyle.secondary)
                 async def exit_button(self, interaction: discord.Interaction, button):
-                    await self.disableAll()
-                    await interaction.response.edit_message(embed=embed_base(interaction, title="Looking forward to your next adventure.", color="green", author=False), view=self)
+                    try:
+                        await self.disableAll()
+                        await interaction.response.edit_message(embed=embed_base(interaction, title="Looking forward to your next adventure.", color="green", author=False), view=self)
+                    except Exception as e:
+                        print(e)
             
             player = copy.deepcopy(self.playerList[str(interaction.user.id)])
             dungeon = RoguelikeDungeon() # generate dungeon
+            await interaction.response.defer(ephemeral=True)
             await interaction.followup.send(embed=embed_base(interaction, title="Get ready to explore!", color="green", author=False),
                 view=RoguelikeView(self, player=player, dungeon=dungeon, idx=idx), ephemeral=True
             )
