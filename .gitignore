@@ -9,4 +9,5 @@ ffmpeg/
 
 data/playlist.json
 data/pokemon.json
+data/leaderboard.json
 tmp.py

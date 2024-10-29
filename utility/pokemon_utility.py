@@ -17,17 +17,25 @@ pokemonStatus = {
     "name": None,
     "id": None,
 
+    # Basic Board
+    "level": 1,
+    "exp": 0,
+
     # Fighting Board
     "hp": 100,
     "atk": 10,
+
+    # Evolution
+    "evolution": []
 }
 
-def create_pokemon(name, id, hp, atk):
+def create_pokemon(name, id, hp, atk, evolution=[]):
     pokemon = pokemonStatus.copy()
     pokemon["name"] = name
     pokemon["id"] = id
     pokemon["hp"] = hp
     pokemon["atk"] = atk
+    pokemon["evolution"] = evolution
     return pokemon
 
 def printList(idx, li, num=5):
@@ -52,16 +60,17 @@ class DungeonRoom:
         return self.room_type
 
 class RoguelikeDungeon:
-    def __init__(self, num_rooms=10):
+    def __init__(self, num_rooms=10000):
         self.rooms = []
         self.num_rooms = num_rooms
         self.generate_dungeon()
     
     def generate_dungeon(self):
-        room_types = ["battle", "treasure"]
+        room_types = ["boss", "battle", "treasure"]
         for i in range(1, self.num_rooms + 1):
             if (i % 10 == 0): room_type = "boss"
-            else: room_type = random.choice(room_types)
+            elif (i % 10 == 3 or i % 10 == 6 or i % 10 == 9): room_type = "treasure"
+            else: room_type = "battle"
             self.rooms.append(DungeonRoom(room_type))
 
     def print_dungeon(self):
