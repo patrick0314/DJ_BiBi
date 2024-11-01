@@ -5,4 +5,4 @@ Pillow==9.5.0
 Pillow==11.0.0
 python-dotenv==1.0.1
 pytube==15.0.0
-yt_dlp==2024.10.7
+yt_dlp==2024.10.22

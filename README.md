@@ -2,144 +2,114 @@
 
 This project, DJ_BiBi, is a custom Discord bot that enhances servers with music and interactive games.
 
-It allows users to play music directly from YouTube, manage playlists, and control playback with commands. Additionally, it offers multiplayer games like 1A2B, Gomoku, and Codenames, providing both entertainment and music streaming features in one bot.
+It allows users to play music directly from YouTube, manage playlists, and control playback with commands. Additionally, it offers multiplayer games like 1A2B, Gomoku, Codenames, and Pokemon Roguelike, providing both entertainment and music streaming features in one bot.
 
 Ideal for social gaming or collaborative playlists, DJ_BiBi adds fun and functionality to any Discord community.
 
 ## Pre-requisite
 
 1. Download Python & install the required packages [requiements](https://github.com/patrick0314/DJ_BiBi/blob/main/requirements.txt)
-```
-discord.py     2.4.0
-numpy          2.1.2
-opencv_python  4.10.0.84
-Pillow         9.5.0
-Pillow         11.0.0
-python-dotenv  1.0.1
-pytube         15.0.0
-yt_dlp         2024.10.7
-```
+
+    ```plain
+    discord.py     2.4.0
+    numpy          2.1.2
+    opencv_python  4.10.0.84
+    Pillow         9.5.0
+    Pillow         11.0.0
+    python-dotenv  1.0.1
+    pytube         15.0.0
+    yt_dlp         2024.10.7
+    ```
 
 2. Download [FFmpeg](https://ffmpeg.org/download.html#build-windows) and add it to your system's PATH. You can refer to [YouTube tutorials](https://youtu.be/hHfzHVuRx7k?t=150) for guidance
 
-## Usage
+## Pre-processing and Execution
 
 1. After cloning the repository, create a folder named `env` and add a file called `password.env` inside it. In this file, enter your Discord bot token
-```
-discord_token=<YOUR_DISCORD_TOKEN>
-```
+
+    ```plain
+    discord_token=<YOUR_DISCORD_TOKEN>
+    ```
 
 2. Create a `tmp` folder for the bot's future use
 
-> You can add your own fail-safe mechanisms to the program
-
 3. Execute `python main.py`
 
-## Function
+## Usage
 
-1. Main
+1. **Main**
+    * The prefix for this bot is `;`
 
-* The prefix for this bot is `;`
+    ```plain
+    -load <cog>     : load the <cog> extension
+    -unload <cog>   : un-load the <cog> extension
+    -reload <cog>   : re-load the <cog> extension
+    -help           : help message
+    ```
 
-```
--load <cog>     : load the <cog> extension
--unload <cog>   : un-load the <cog> extension
--reload <cog>   : re-load the <cog> extension
--help           : help message
-```
+2. **Music**
+   * This bot supports basic YouTube music playback functions, including play, pause, loop, and shuffle.
 
-2. Music
+   * This bot can access YouTube playlists and update to reflect any changes made to them.
 
-* This bot can play YouTube songs with basic functionalities, including play, pause, loop, and shuffle
+    ```plain
+    -(j)oin                : call bot join the vc
+    -(p)lay <URL>          : play the song of <URL>
+    -(q)ueue [num]         : list the top [num] / 10 songs on the playlist
+    -repeat                : switch the repeat mode
+    -shuffle               : shuffle the playlist
+    -pause                 : pause the song
+    -resume                : resume the song
+    -skip [num]            : skip the [num]-th song in the playlist, 0: playing song
+    -clear                 : clear all queue except for playing song
+    -stop                  : call bot leave the vc
 
-* This bot can access YouTube playlists and update in accordance with changes to the playlists
+    -lists                   : list and update all saved playlist
+    -(s)ave <name> <url>     : save the YT playlist as <name>
+    -unsave <name>           : delete the <name> playlist
+    -(l)ist <name>           : load the pre-saved <name> playlist
+    -update <name>           : update the <name>-playlist which is from YT playlist
 
-```
--(j)oin                : call bot join the vc
--(p)lay <URL>          : play the song of <URL>
--(q)ueue [num]         : list the top [num] / 10 songs on the playlist
--repeat                : switch the repeat mode
--shuffle               : shuffle the playlist
--pause                 : pause the song
--resume                : resume the song
--skip [num]            : skip the [num]-th song in the playlist, 0: playing song
--clear                 : clear all queue except for playing song
--stop                  : call bot leave the vc
+    <> = required information, [] = optional information
+    ```
 
--lists                   : list and update all saved playlist
--(s)ave <name> <url>     : save the YT playlist as <name>
--unsave <name>           : delete the <name> playlist
--(l)ist <name>           : load the pre-saved <name> playlist
--update <name>           : update the <name>-playlist which is from YT playlist
+3. **Game**
 
-<> = required information, [] = optional information
-```
+   * [1A2B (AB Game)](https://zh.wikipedia.org/zh-tw/1A2B)
 
-3. Game
+   * [五子棋 (Gomoku)](https://zh.wikipedia.org/zh-tw/%E4%BA%94%E5%AD%90%E6%A3%8B)
 
-* [1A2B (AB Game)](https://zh.wikipedia.org/zh-tw/1A2B)
+   * [機密代號 (Codenames)](https://en.wikipedia.org/wiki/Codenames_(board_game))
 
-* [五子棋 (Gomoku)](https://zh.wikipedia.org/zh-tw/%E4%BA%94%E5%AD%90%E6%A3%8B)
+    ```plain
+    AB Game:
+    -abstart           : start the AB game
+    -(g)uess <number>  : guess the 4-digit number
 
-* [機密代號 (Codenames)](https://en.wikipedia.org/wiki/Codenames_(board_game))
+    Gomoku:
+    -gostart           : start the Gomoku
+    -place <x> <y>     : place at (x, y)
 
-```
-AB Game:
--abstart           : start the AB game
--(g)uess <number>  : guess the 4-digit number
+    Codenames:
+    -codestart         : start the Codenames
+    -host              : host use this command to get the answer
+    -code <code>       : guess <code> be author's team code
 
-Gomoku:
--gostart           : start the Gomoku
--place <x> <y>     : place at (x, y)
+    <> = required information, [] = optional information
+    ```
 
-Codenames:
--codestart         : start the Codenames
--host              : host use this command to get the answer
--code <code>       : guess <code> be author's team code
+4. **Others**
 
-<> = required information, [] = optional information
-```
+    ```plain
+    -card <name> [title] [descirption] [url] : send the embedded card to <name> with [title] [description] [image url]
 
-4. Others
+    <> = required information, [] = optional information
+    ```
 
-```
--card <name> [title] [descirption] [url] : send the embedded card to <name> with [title] [description] [image url]
+5. **Pokemon Roguelike**
 
-<> = required information, [] = optional information
-```
+    ```plain
+    -pokemon    : open the main page
 
-5. Pokemon Roguelike
-
-### Main Menu
-
-Using the command `;pokemon` opens the main page, which has four options:
-
-1. Create a new character
-2. Check your own pokemons
-3. Check your own item
-4. Play Roguelike
-
-### Create a new character
-
-Each user can only create a character once.
-
-When creating a character, users can choose from Bulbasaur, Charmander, or Squirtle.
-
-### Check your own pokemons
-
-Users can navigate through the pages using "previous" or "next" and select a Pokémon on the current page to view its detailed information.
-
-### Check your own item
-
-Users can navigate through the pages using "previous" or "next" and select an item on the current page to view its detailed information.
-
-### Play Roguelike
-
-This is a Pokémon-themed Discord mini-game that combines Pokémon battles with Roguelike elements.
-
-1. Players explore randomly generated dungeons, encountering different Pokémon, items, and room layouts each time they enter.
-2. Players can choose Pokémon as partners for battles and collect rare items and Pokémon during their adventure.
-3. As the adventure progresses, the difficulty gradually increases, and players may face powerful bosses.
-4. If all Pokémon are defeated, the player must start over.
-
-Players' progress and achievements will be displayed on a leaderboard, challenging them to push their limits!
+    <> = required information, [] = optional information
+    ```
