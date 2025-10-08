@@ -1,63 +1,41 @@
 import os
-import asyncio
 import discord
 
-from dotenv import load_dotenv
 from discord.ext import commands
-from utility.embed import embed_base
+from config import DISCORD_TOKEN
 
-# Discord Bot Params
-load_dotenv(dotenv_path="./env/password.env")
-TOKEN=os.getenv("discord_token")
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix=";", intents=intents, help_command=None)
+# --- Main Discord Bot Class ---
+class DJ_BiBi(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.members = True # required to get member information
+        intents.message_content = True # required to read command content
+        intents.voice_states = True # required to monitor and join voice channel
 
-@bot.event
-async def on_ready():
-    print(f"{bot.user} is now ready!!!")
+        super().__init__(command_prefix="!", intents=intents)
 
-@bot.command(name="load")
-async def load(ctx, extension):
-    await bot.load_extension(f"cogs.{extension}")
-    await ctx.send(embed=embed_base(ctx, title=f"Loaded {extension} done.", color="green", author=False))
-
-@bot.command(name="unload")
-async def unload(ctx, extension):
-    await bot.unload_extension(f"cogs.{extension}")
-    await ctx.send(embed=embed_base(ctx, title=f"Unloaded {extension} done.", color="red", author=False))
-
-@bot.command(name="reload")
-async def reload(ctx, extension):
-    await bot.reload_extension(f"cogs.{extension}")
-    await ctx.send(embed=embed_base(ctx, title=f"Reloaded {extension} done.", color="green", author=False))
-
-@bot.command(name="help")
-async def help(ctx):
-    try:
-        help_message = """
-# Game Command (`;`)
-```
--music_help      : help for music commands
--playlist_help   : help for playlist commands
--game_help       : help for game commands
--others_help     : help for others commands
-```
-        """
-        await ctx.send(embed=embed_base(ctx, description=help_message, color="orange", author=False))
-    except Exception as e:
-        print(e)
-
-# Load all extensions
-async def loadAll():
-    for filename in os.listdir("./cogs"):
-        if not filename.endswith(".py"): continue
-        await bot.load_extension(f"cogs.{filename[:-3]}")
-
-async def main():
-    async with bot:
-        await loadAll()
-        await bot.start(TOKEN)
+        # List of extentions (cogs) to be loaded on startup
+        self.initial_extensions = ['cogs.music']
+    
+    async def setup_hook(self):
+        # Called before the bot starts connecting, used to load extensions
+        for ext in self.initial_extensions:
+            try:
+                await self.load_extension(ext)
+                print(f"Successfully loaded extension: {ext}")
+            except Exception as e:
+                print(f"Failed to load extension {ext}: {e}")
+    
+    async def on_ready(self):
+        # Called when the bot successfully connects to Discord
+        print("-----------------------------------")
+        print(f"Bot is logged in as: {self.user}")
+        print(f"User ID: {self.user.id}")
+        print("-----------------------------------")
 
 if __name__ == "__main__":
-    asyncio.run(main=main())
+    if DISCORD_TOKEN == "":
+        print("ERROR: Please update DISCORD_TOKEN in config.py before running")
+    else:
+        bot = DJ_BiBi()
+        bot.run(DISCORD_TOKEN)
