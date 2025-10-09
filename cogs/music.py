@@ -1,5 +1,6 @@
 import asyncio
 import discord
+import random
 import wavelink
 
 from discord.ext import commands
@@ -197,6 +198,30 @@ class Music(commands.Cog):
                 description=f"An unknown error occurred while removing the track: {e}",
             ))
 
+    @commands.command(name="clear", aliases=['cls'])
+    @is_in_same_voice_channel()
+    async def clear_command(self, ctx: commands.Context):
+        player: wavelink.Player = ctx.voice_client
+        if not player or player.queue.is_empty:
+            return await ctx.send(embed=info_embed(
+                description="The queue is already empty.",
+            ))
+
+        # Check if the player is currently playing anything
+        if not player.is_playing():
+            # If nothing is playing, just clear the queue
+            player.queue.clear()
+            return await ctx.send(embed=success_embed(
+                description="🗑️ Queue has been cleared.",
+            ))
+
+        # If a song is playing, we clear the queue but keep the current song playing
+        queue_length = len(player.queue)
+        player.queue.clear()
+        await ctx.send(embed=success_embed(
+            description=f"🗑️ Cleared **{queue_length}** track(s) from the queue. The current song keeps playing.",
+        ))
+
     @commands.command(name="pause")
     @is_in_same_voice_channel()
     async def pause_command(self, ctx: commands.Context):
@@ -297,6 +322,26 @@ class Music(commands.Cog):
         self.loop_states[guild_id] = new_mode
         await ctx.send(embed=success_embed(
             description=f"Loop mode set to: **{mode_names[new_mode]}**.",
+        ))
+
+    @commands.command(name="shuffle")
+    @is_in_same_voice_channel()
+    async def shuffle_command(self, ctx: commands.Context):
+        player: wavelink.Player = ctx.voice_client
+        if not player or player.queue.is_empty:
+            return await ctx.send(embed=info_embed(
+                description="The queue is empty. Nothing to shuffle.",
+            ))
+
+        # Shuffle the list in place
+        queue_list = list(player.queue)
+        random.shuffle(queue_list)
+        
+        # Replace the old queue with the shuffled list
+        player.queue.clear()
+        player.queue.extend(queue_list)
+        await ctx.send(embed=success_embed(
+            description=f"🔀 Shuffled **{len(queue_list)}** tracks in the queue!",
         ))
 
     @commands.command(name="volume", aliases=['vol'])
