@@ -15,7 +15,7 @@ class DJ_BiBi(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
         # List of extentions (cogs) to be loaded on startup
-        self.initial_extensions = ['cogs.music']
+        self.initial_extensions = ["cogs.music", "cogs.chat"]
     
     async def setup_hook(self):
         # Called before the bot starts connecting, used to load extensions
