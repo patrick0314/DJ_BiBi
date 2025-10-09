@@ -299,6 +299,62 @@ class Music(commands.Cog):
             description="▶️ Music resumed.",
         ))
 
+    @commands.command(name="nowplaying", aliases=['np'])
+    @is_in_same_voice_channel()
+    async def nowplaying_command(self, ctx: commands.Context):
+        """Displays detailed information about the currently playing track."""
+        player: wavelink.Player = ctx.voice_client
+        
+        if not player or not player.is_playing():
+            return await ctx.send(embed=info_embed(
+                description="Nothing is currently playing.",
+            ))
+
+        track = player.current
+        
+        # Calculate time (in milliseconds) and format
+        position_ms = player.position
+        total_length_ms = track.length
+        
+        # Format milliseconds to MM:SS string
+        def format_time(ms):
+            seconds = ms // 1000
+            minutes, seconds = divmod(seconds, 60)
+            return f"{minutes:02}:{seconds:02}"
+
+        # Build progress bar
+        bar_length = 25
+        progress = int((position_ms / total_length_ms) * bar_length)
+        # Use an empty space to prevent the progress bar from being too condensed
+        progress_bar = f"[`{'█' * progress}{'░' * (bar_length - progress)}`]" 
+
+        # Build the final description
+        description = (
+            f"**{track.title}**\n"
+            f"by {track.author}\n\n"
+            f"{format_time(position_ms)} {progress_bar} {format_time(total_length_ms)}"
+        )
+        
+        embed = discord.Embed(
+            title="🎶 Now Playing",
+            description=description,
+            color=0x4E93FF # A distinct blue color for NP
+        )
+        
+        # Set the thumbnail using the track's album art URL (if available)
+        if track.thumbnail:
+            embed.set_thumbnail(url=track.thumbnail)
+        
+        # Add a link to the song
+        embed.add_field(name="Source", value=f"[Click Here]({track.uri})", inline=True)
+        
+        # Add the loop status
+        loop_mode = self.loop_states.get(ctx.guild.id, 0)
+        mode_names = { 0: 'Off', 1: 'Track Loop', 2: 'Queue Loop', }
+        embed.add_field(name="Loop", value=mode_names[loop_mode], inline=True)
+
+        await ctx.send(embed=embed)
+
     @commands.command(name="queue", aliases=["q", "list"])
     @is_in_same_voice_channel()
     async def queue_command(self, ctx: commands.Context):
@@ -331,16 +387,8 @@ class Music(commands.Cog):
     async def loop_command(self, ctx: commands.Context, mode: str = None):
         guild_id = ctx.guild.id
         current_mode = self.loop_states.get(guild_id, 0)
-        modes = {
-            'off': 0,
-            'track': 1,
-            'queue': 2,
-        }
-        mode_names = {
-            0: 'Off',
-            1: 'Track Loop (Current Song)',
-            2: 'Queue Loop (Playlist)',
-        }
+        modes = { 'off': 0, 'track': 1, 'queue': 2, }
+        mode_names = { 0: 'Off', 1: 'Track Loop (Current Song)', 2: 'Queue Loop (Playlist)', }
         
         # Display current mode
         if mode is None:
@@ -428,12 +476,24 @@ class Music(commands.Cog):
         ))
 
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        # 
         if isinstance(error, commands.CheckFailure):
             await ctx.send(embed=error_embed(
                 description=str(error),
             ))
+        #
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.send(embed=error_embed(
+                description=str(error),
+            ))
+        #
         else:
-            raise error
+            print(f"Unhandled command error in {ctx.command}: {error}")
+            await ctx.send(embed=error_embed(
+                title="🛑 Unhandled Error",
+                description="An unexpected error occurred while processing your command.",
+            ))
+            raise error # re-raise the error to be logged by discord.py
 
 # Setup function required to load the Cog into the bot
 async def setup(bot: commands.Bot):
