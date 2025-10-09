@@ -35,6 +35,7 @@ class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.loop_states = {} # 0: Off, 1: Track loop, 2: Queue loop
+        self.auto_leave_timers = {} # tracks the auto-leave task for each guild
         bot.loop.create_task(self.connect_nodes()) # schedule the task to connect to Lavalink nodes
     
     # --- Lavalink Connection and Events
@@ -53,7 +54,38 @@ class Music(commands.Cog):
                 print(f"Wavelink Node {node.identifier} established")
             except Exception as e:
                 print(f"Wavelink connection failed: {e}")
-    
+
+    async def start_auto_leave_timer(self, player: wavelink.Player, delay: int = 300):
+        guild_id = player.guild.id
+        channel = player.channel
+        if guild_id in self.auto_leave_timers and not self.auto_leave_timers[guild_id].done():
+            self.auto_leave_timers[guild_id].cancel()
+        
+        async def disconnect_task():
+            try:
+                await asyncio.sleep(delay=delay)
+                if player.is_playing() or not player.queue.is_empty:
+                    return
+                
+                await player.disconnect()
+                await channel.send(embed=info_embed(
+                    description=f"Inactivity. Disconnected from **{channel.name}**"
+                ))
+                del self.auto_leave_timers[guild_id]
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                print(f"Auto-leave task error: {e}")
+        
+        # Start the new task
+        task = self.bot.loop.create_task(disconnect_task())
+        self.auto_leave_timers[guild_id] = task
+
+    def stop_auto_leave_timer(self, guild_id: int):
+        if guild_id in self.auto_leave_timers and not self.auto_leave_timers[guild_id].done():
+            self.auto_leave_timers[guild_id].cancel()
+            del self.auto_leave_timers[guild_id]
+
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node):
         print(f"Lavalink Node {node.identifier} is ready")
@@ -78,6 +110,10 @@ class Music(commands.Cog):
             await channel.send(embed=info_embed(
                 description=f"Now playing next: **{next_track.title}** - **{next_track.author}**"
             ))
+
+            self.stop_auto_leave_timer(guild_id=guild_id) # new song is playing, ensure timer is stopped
+        else:
+            await self.start_auto_leave_timer(player=player, delay=300) # queue is empty, start the auto-leave timer
 
     # --- Music Commands ---
     @commands.command(name="join", aliases=["j", "connect"])
@@ -116,6 +152,7 @@ class Music(commands.Cog):
         
         # Get the player instance
         player: wavelink.Player = ctx.voice_client
+        guild_id = ctx.guild.id
 
         # Handle playback and queue logic
         if not player.is_playing() and player.queue.is_empty:
@@ -127,13 +164,15 @@ class Music(commands.Cog):
                 
                 # Start playing the first track from the queue.
                 first_track = player.queue.get()
-                await player.play(first_track) 
+                await player.play(first_track)
+                self.stop_auto_leave_timer(guild_id=guild_id)
                 return await ctx.send(embed=info_embed(
                     description=f"Started playing playlist **{playlist.name}**. Added {len(playlist.tracks)} tracks to the queue.",
                 ))
             else:
                 track = tracks[0]
                 await player.play(track)
+                self.stop_auto_leave_timer(guild_id=guild_id)
                 return await ctx.send(embed=info_embed(
                     description=f"Now playing: **{track.title}** - **{track.author}**",
                 ))
