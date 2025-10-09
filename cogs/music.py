@@ -19,13 +19,13 @@ class Music(commands.Cog):
         # Check if a node pool already exists to prevent duplicate connections
         if not wavelink.NodePool._nodes:
             try:
-                node = await wavelink.NodePool.create_node(
+                node: wavelink.Node = await wavelink.NodePool.create_node(
                     bot=self.bot,
                     host=LAVALINK_HOST,
                     port=LAVALINK_PORT,
                     password=LAVALINK_PASSWORD,
                 )
-                print(f"Wave")
+                print(f"Wavelink Node {node.identifier} established")
             except Exception as e:
                 print(f"Wavelink connection failed: {e}")
     
@@ -41,7 +41,9 @@ class Music(commands.Cog):
             await player.play(next_track)
 
             channel = player.channel
-            await channel.send(f"Now playing next: **{next_track.title}** - **{next_track.author}")
+            await channel.send(embed=info_embed(
+                description=f"Now playing next: **{next_track.title}** - **{next_track.author}**",
+            ))
 
     # --- Music Commands ---
     @commands.command(name="join", aliases=["j", "connect"])
@@ -90,13 +92,13 @@ class Music(commands.Cog):
                 # Start playing the first track from the queue.
                 first_track = player.queue.get()
                 await player.play(first_track) 
-                return await ctx.send(embed=success_embed(
+                return await ctx.send(embed=info_embed(
                     description=f"Started playing playlist **{playlist.name}**. Added {len(playlist.tracks)} tracks to the queue.",
                 ))
             else:
                 track = tracks[0]
                 await player.play(track)
-                return await ctx.send(embed=success_embed(
+                return await ctx.send(embed=info_embed(
                     description=f"Now playing: **{track.title}** - **{track.author}**",
                 ))
         else:
@@ -104,33 +106,97 @@ class Music(commands.Cog):
             if isinstance(tracks[0], wavelink.Playlist):
                 playlist = tracks[0]
                 player.queue.extend(playlist.tracks)
-                return await ctx.send(embed=success_embed(
+                return await ctx.send(embed=info_embed(
                     description=f"Added playlist **{playlist.name}** ({len(playlist.tracks)} tracks) to the queue.",
                 ))
             else:
                 track = tracks[0]
                 player.queue.put(track)
-                return await ctx.send(embed=success_embed(
+                return await ctx.send(embed=info_embed(
                     description=f"Added **{track.title}** - **{track.author}** to the queue.",
                 ))
 
     @commands.command(name="skip", aliases=["s", "next"])
     async def skip_command(self, ctx: commands.Context):
         player: wavelink.Player = ctx.voice_client
-        if not player or not player.is_playing:
+        if not player or not player.is_playing():
             return await ctx.send(embed=error_embed(
                 description="Nothing is currently playing",
             ))
         
         await player.stop()
         await ctx.send(embed=success_embed(
-            description="Skipped the current track"
+            description="Skipped the current track",
+        ))
+
+    @commands.command(name="pause")
+    async def pause_command(self, ctx: commands.Context):
+        player: wavelink.Player = ctx.voice_client
+        if not player:
+            return await ctx.send(embed=error_embed(
+                description="The bot is not connected to a voice channel.",
+            ))
+        
+        if player.is_paused():
+            return await ctx.send(embed=info_embed(
+                description="Music is already paused.",
+            ))
+
+        await player.pause()
+        await ctx.send(embed=success_embed(
+            description="⏸️ Music paused.",
+        ))
+
+    @commands.command(name="resume", aliases=['res'])
+    async def resume_command(self, ctx: commands.Context):
+        player: wavelink.Player = ctx.voice_client
+        if not player:
+            return await ctx.send(embed=error_embed(
+                description="The bot is not connected to a voice channel.",
+            ))
+            
+        if not player.is_paused():
+            return await ctx.send(embed=info_embed(
+                description="Music is not paused.",
+            ))
+
+        await player.resume()
+        await ctx.send(embed=success_embed(
+            description="▶️ Music resumed.",
+        ))
+
+    @commands.command(name="volume", aliases=['vol'])
+    async def volume_command(self, ctx: commands.Context, volume: int = None):
+        player: wavelink.Player = ctx.voice_client
+        if not player:
+            return await ctx.send(embed=error_embed(
+                description="The bot is not connected to a voice channel.",
+            ))
+
+        # Display current volume
+        if volume is None:
+            return await ctx.send(embed=info_embed(
+                description=f"Current volume is **{player.volume}%**.",
+            ))
+        
+        # Modify volume
+        if not 0 <= volume <= 1000:
+            return await ctx.send(embed=error_embed(
+                description="Volume must be a number between 0 and 1000.",
+            ))
+
+        await player.set_volume(volume)
+        await ctx.send(embed=success_embed(
+            description=f"🔊 Volume set to **{volume}%**.",
+        ))
 
     @commands.command(name="queue", aliases=["q", "list"])
     async def queue_command(self, ctx: commands.Context):
         player: wavelink.Player = ctx.voice_client
-        if not player or player.queue.is_empty:
-            return await ctx.send("The queue is currently empty")
+        if not player or (player.queue.is_empty and not player.is_playing()):
+            return await ctx.send(embed=info_embed(
+                description="The queue is currently empty.",
+            ))
 
         queue_list = []
         
@@ -144,18 +210,18 @@ class Music(commands.Cog):
                 queue_list.append(f"And {len(player.queue) - index} more track(s)...")
                 break
             queue_list.append(f"**{index + 1}.** [{track.title}]({track.uri}) by {track.author}")
-        
-        embed = discord.Embed(
+
+        await ctx.send(embed=info_embed(
             title="Music Queue",
-            description="\n".join(queue_list)
-            color=discord.Color.blue()
-        )
-        await ctx.send(embed=embed)
+            description="\n".join(queue_list),
+        ))
 
     @commands.command(name="leave", aliases=["l", "disconnect"])
     async def leave_command(self, ctx: commands.Context):
         if not ctx.voice_client:
-            return await ctx.send("The bot is not currently in a voice channel")
+            return await ctx.send(embed=error_embed(
+                description="The bot is not currently in a voice channel",
+            ))
         
         # Clear the queue before disconnecting
         player: wavelink.Player = ctx.voice_client
@@ -163,7 +229,9 @@ class Music(commands.Cog):
 
         # Disconnect the player
         await ctx.voice_client.disconnect()
-        await ctx.send("Disconnected from the voice channel")
+        await ctx.send(embed=success_embed(
+            description="Disconnected from the voice channel",
+        ))
         
 # Setup function required to load the Cog into the bot
 async def setup(bot: commands.Bot):

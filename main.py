@@ -29,7 +29,7 @@ class DJ_BiBi(commands.Bot):
     async def on_ready(self):
         # Called when the bot successfully connects to Discord
         print("-----------------------------------")
-        print(f"Bot is logged in as: {self.user}")
+        print(f"Bot is logged in as: {self.user} (DJ BiBi)")
         print(f"User ID: {self.user.id}")
         print("-----------------------------------")
 

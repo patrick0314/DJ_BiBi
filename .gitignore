@@ -1,0 +1,8 @@
+# --- Compile Files ---
+__pycache__/
+*.pyc
+*.egg-info/
+
+# --- Pravite Files ---
+config.py
+lavalink/application.yml
