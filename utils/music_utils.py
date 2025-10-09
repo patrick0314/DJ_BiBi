@@ -2,6 +2,7 @@ import asyncio
 import discord
 import wavelink
 
+from discord import app_commands
 from discord.ext import commands
 from utils.embed import success_embed, error_embed, info_embed
 
@@ -33,6 +34,12 @@ def is_in_same_voice_channel():
             raise commands.CheckFailure("You must be in the same voice channel as the bot to control playback")
     
     return commands.check(predicate)
+
+# --- Feature : Loop ---
+class LoopMode(app_commands.Choice):
+    OFF = app_commands.Choice(name="Off", value="off")
+    TRACK = app_commands.Choice(name="Track Loop", value="track")
+    QUEUE = app_commands.Choice(name="Queue Loop", value="queue")
 
 # --- Feature : Queue ---
 class QueueView(discord.ui.View):

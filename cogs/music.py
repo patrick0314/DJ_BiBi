@@ -3,10 +3,11 @@ import discord
 import random
 import wavelink
 
+from discord import app_commands
 from discord.ext import commands
 from config import LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
 from utils.embed import success_embed, error_embed, info_embed
-from utils.music_utils import is_in_voice_channel, is_in_same_voice_channel, QueueView, VolumeView
+from utils.music_utils import format_time, is_in_voice_channel, is_in_same_voice_channel, LoopMode, QueueView, VolumeView
 
 # --- A Cog for Handling All Music-Related Commands ---
 class Music(commands.Cog):
@@ -94,211 +95,220 @@ class Music(commands.Cog):
             await self.start_auto_leave_timer(player=player, delay=300) # queue is empty, start the auto-leave timer
 
     # --- Music Commands ---
-    @commands.command(name="join", aliases=["j", "connect"])
+    @app_commands.command(name="join", description="Makes the bot join your voice channel.")
     @is_in_voice_channel()
-    async def join_command(self, ctx: commands.Context):
-        if not ctx.author.voice:
-            return await ctx.send(embed=error_embed(
-                description="You must be in a voice channel to use this command",
-            ))
-        
+    async def join_command(self, interaction: discord.Interaction):
+        channel = interaction.user.voice.channel
+        player: wavelink.Player = interaction.guild.voice_client
+        if player and player.channel == channel:
+            return await interaction.response.send_message(
+                embed=info_embed(description=f"I am already connected to **{channel.name}**."),
+                ephemeral=True
+            )
+
         # Connect or move the player to the voice channel
-        player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
-        await ctx.send(embed=success_embed(
-            title="🔊 Connected",
-            description=f"Joined voice channel: **{player.channel.name}**",
-        ))
+        player = await channel.connect(cls=wavelink.Player)
+        await interaction.response.send_message(
+            embed=success_embed(
+                title="🔊 Connected",
+                description=f"Joined voice channel: **{player.channel.name}**"
+            )
+        )
     
-    @commands.command(name="play", aliases=["p"])
-    @is_in_same_voice_channel()
-    async def play_command(self, ctx: commands.Context, *, search: str):
+    @app_commands.command(name="play", description="Searches for a track/playlist (YouTube Music link or keywords) and starts playback.")
+    @app_commands.describe(search="The song title, artist, or YouTube Music URL.")
+    @is_in_voice_channel()
+    async def play_command(self, interaction: discord.Interaction, search: str):
         # Search and plays music from YouTube Music (or other supported sources)
-        if not ctx.voice_client:
+        player: wavelink.Player = interaction.guild.voice_client
+        guild_id = interaction.guild.id
+        await interaction.response.defer()
+        if not player:
+            channel = interaction.user.voice.channel
             try:
-                await ctx.invoke(self.join_command)
+                player = await channel.connect(cls=wavelink.Player)
+                join_msg = f"🔊 Joined **{channel.name}**! " 
             except Exception:
-                return await ctx.send(embed=error_embed(
-                    description="Please use `!join` first",
-                ))
+                return await interaction.followup.send(
+                    embed=error_embed(
+                        description="Could not automatically join your voice channel. Check bot permissions."
+                    ), ephemeral=True
+                )
+        else:
+            join_msg = "" 
 
         # Search for the track using YouTube Music search engine
-        tracks = await wavelink.YouTubeMusicSearch.search(query=search)
+        # Delay for searching
+        try:
+            tracks = await wavelink.YouTubeMusicSearch.search(query=search)
+        except Exception as e:
+            print(f"Wavelink Search Error: {e}")
+            tracks = None
+            
         if not tracks:
-            return await ctx.send(embed=error_embed(
-                description=f"Could not find any tracks for `{search}`",
-            ))
-        
-        # Get the player instance
-        player: wavelink.Player = ctx.voice_client
-        guild_id = ctx.guild.id
+            return await interaction.followup.send(
+                embed=error_embed(description=f"Could not find any tracks for `{search}`"),
+                ephemeral=True
+            )
 
-        # Handle playback and queue logic
+        self.stop_auto_leave_timer(guild_id=guild_id)
         if not player.is_playing() and player.queue.is_empty:
-            # If player is idle and queue is empty, start playback immediately.
+            # Start playing if idle
             if isinstance(tracks[0], wavelink.Playlist):
                 playlist = tracks[0]
-                # Put the playlist tracks into the queue first.
                 player.queue.extend(playlist.tracks)
-                
-                # Start playing the first track from the queue.
                 first_track = player.queue.get()
                 await player.play(first_track)
-                self.stop_auto_leave_timer(guild_id=guild_id)
-                return await ctx.send(embed=info_embed(
-                    description=f"Started playing playlist **{playlist.name}**. Added {len(playlist.tracks)} tracks to the queue.",
+                return await interaction.followup.send(embed=info_embed(
+                    description=f"{join_msg} Started playing playlist **{playlist.name}**. Added {len(playlist.tracks)} tracks to the queue.",
                 ))
             else:
                 track = tracks[0]
                 await player.play(track)
-                self.stop_auto_leave_timer(guild_id=guild_id)
-                return await ctx.send(embed=info_embed(
-                    description=f"Now playing: **{track.title}** - **{track.author}**",
-                ))
+            return await interaction.followup.send(embed=info_embed(
+                description=f"{join_msg} Now playing: **{track.title}** - **{track.author}**",
+            ))
         else:
-            # Add the track or playlist to the queue.
+            # Add to queue
             if isinstance(tracks[0], wavelink.Playlist):
                 playlist = tracks[0]
                 player.queue.extend(playlist.tracks)
-                return await ctx.send(embed=info_embed(
+                return await interaction.followup.send(embed=info_embed(
                     description=f"Added playlist **{playlist.name}** ({len(playlist.tracks)} tracks) to the queue.",
                 ))
             else:
                 track = tracks[0]
                 player.queue.put(track)
-                return await ctx.send(embed=info_embed(
+                return await interaction.followup.send(embed=info_embed(
                     description=f"Added **{track.title}** - **{track.author}** to the queue.",
                 ))
 
-    @commands.command(name="skip", aliases=["s", "next"])
+    @app_commands.command(name="skip", description="Skips the currently playing track.")
     @is_in_same_voice_channel()
-    async def skip_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
+    async def skip_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client 
         if not player or not player.is_playing():
-            return await ctx.send(embed=error_embed(
-                description="Nothing is currently playing",
-            ))
+            return await interaction.response.send_message(
+                embed=error_embed(description="Nothing is currently playing"),
+                ephemeral=True, # private response
+            )
         
         await player.stop()
-        await ctx.send(embed=success_embed(
-            description="Skipped the current track",
-        ))
+        await interaction.response.send_message(
+            embed=success_embed(description="Skipped the current track")
+        )
 
-    @commands.command(name="remove", aliases=['rm', 'del'])
+    @app_commands.command(name="remove", description="Removes a track from the queue by its queue number (1st, 2nd, etc.).")
+    @app_commands.describe(index="The queue position of the track to remove (e.g., 1).")
     @is_in_same_voice_channel()
-    async def remove_command(self, ctx: commands.Context, index: int):
-        player: wavelink.Player = ctx.voice_client
+    async def remove_command(self, interaction: discord.Interaction, index: app_commands.Range[int, 1]): 
+        player: wavelink.Player = interaction.guild.voice_client
         if not player or player.queue.is_empty:
-            return await ctx.send(embed=info_embed(
-                description="The queue is currently empty.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="The queue is currently empty."),
+                ephemeral=True
+            )
 
         # Queue indexing starts from 0 internally, but users see 1-based index.
-        queue_index = index - 1
+        queue_index = index - 1 
+        if not 0 <= queue_index < len(player.queue): # Check if the index is valid
+            return await interaction.response.send_message(
+                embed=error_embed(description=f"Invalid queue number. Please provide a number between 1 and {len(player.queue)}."),
+                ephemeral=True
+            )
         try:
-            # Check if the index is valid
-            if not 0 <= queue_index < len(player.queue):
-                return await ctx.send(embed=error_embed(
-                    description=f"Invalid queue number. Please provide a number between 1 and {len(player.queue)}.",
-                ))
-                
             # Remove the track
             removed_track = player.queue.pop(queue_index)
-            await ctx.send(embed=success_embed(
-                description=f"🗑️ Removed **{removed_track.title}** - **{removed_track.author}** from the queue.",
-            ))
-        except IndexError:
-            await ctx.send(embed=error_embed(
-                description=f"Invalid queue number. Please provide a number between 1 and {len(player.queue)}.",
-            ))
+            await interaction.response.send_message(
+                embed=success_embed(description=f"🗑️ Removed **{removed_track.title}** - **{removed_track.author}** from the queue."),
+            )
         except Exception as e:
-            await ctx.send(embed=error_embed(
-                description=f"An unknown error occurred while removing the track: {e}",
-            ))
+            await interaction.response.send_message(
+                embed=error_embed(description=f"An unknown error occurred while removing the track: {e}"),
+                ephemeral=True
+            )
 
-    @commands.command(name="clear", aliases=['cls'])
+    @app_commands.command(name="clear", description="Clears all tracks from the music queue.")
     @is_in_same_voice_channel()
-    async def clear_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
+    async def clear_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player or player.queue.is_empty:
-            return await ctx.send(embed=info_embed(
-                description="The queue is already empty.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="The queue is already empty."),
+                ephemeral=True
+            )
 
         # Check if the player is currently playing anything
         if not player.is_playing():
             # If nothing is playing, just clear the queue
             player.queue.clear()
-            return await ctx.send(embed=success_embed(
-                description="🗑️ Queue has been cleared.",
-            ))
+            return await interaction.response.send_message(
+                embed=success_embed(description="🗑️ Queue has been cleared."),
+            )
 
         # If a song is playing, we clear the queue but keep the current song playing
         queue_length = len(player.queue)
         player.queue.clear()
-        await ctx.send(embed=success_embed(
-            description=f"🗑️ Cleared **{queue_length}** track(s) from the queue. The current song keeps playing.",
-        ))
+        await interaction.response.send_message(
+            embed=success_embed(description=f"🗑️ Cleared **{queue_length}** track(s) from the queue. The current song keeps playing."),
+        )
 
-    @commands.command(name="pause")
+    @app_commands.command(name="pause", description="Pauses the currently playing track.")
     @is_in_same_voice_channel()
-    async def pause_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
+    async def pause_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player:
-            return await ctx.send(embed=error_embed(
-                description="The bot is not connected to a voice channel.",
-            ))
+            return await interaction.response.send_message(
+                embed=error_embed(description="The bot is not connected to a voice channel."),
+                ephemeral=True # private response
+            )
         
         if player.is_paused():
-            return await ctx.send(embed=info_embed(
-                description="Music is already paused.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="Music is already paused."),
+                ephemeral=True # private response
+            )
 
         await player.pause()
-        await ctx.send(embed=success_embed(
-            description="⏸️ Music paused.",
-        ))
+        await interaction.response.send_message(
+            embed=success_embed(description="⏸️ Music paused.")
+        )
 
-    @commands.command(name="resume", aliases=['res'])
+    @app_commands.command(name="resume", description="Resumes paused playback.")
     @is_in_same_voice_channel()
-    async def resume_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
+    async def resume_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player:
-            return await ctx.send(embed=error_embed(
-                description="The bot is not connected to a voice channel.",
-            ))
+            return await interaction.response.send_message(
+                embed=error_embed(description="The bot is not connected to a voice channel."),
+                ephemeral=True # private response
+            )
             
         if not player.is_paused():
-            return await ctx.send(embed=info_embed(
-                description="Music is not paused.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="Music is not paused."),
+                ephemeral=True # private response
+            )
 
         await player.resume()
-        await ctx.send(embed=success_embed(
-            description="▶️ Music resumed.",
-        ))
+        await interaction.response.send_message(
+            embed=success_embed(description="▶️ Music resumed.")
+        )
 
-    @commands.command(name="nowplaying", aliases=['np'])
+    @app_commands.command(name="nowplaying", description="Displays detailed information about the currently playing track.")
     @is_in_same_voice_channel()
-    async def nowplaying_command(self, ctx: commands.Context):
-        """Displays detailed information about the currently playing track."""
-        player: wavelink.Player = ctx.voice_client
-        
+    async def nowplaying_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player or not player.is_playing():
-            return await ctx.send(embed=info_embed(
-                description="Nothing is currently playing.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="Nothing is currently playing."),
+                ephemeral=True
+            )
 
+        # Calculate time (in milliseconds)
         track = player.current
-        
-        # Calculate time (in milliseconds) and format
         position_ms = player.position
         total_length_ms = track.length
-        
-        # Format milliseconds to MM:SS string
-        def format_time(ms):
-            seconds = ms // 1000
-            minutes, seconds = divmod(seconds, 60)
-            return f"{minutes:02}:{seconds:02}"
 
         # Build progress bar
         bar_length = 25
@@ -323,81 +333,64 @@ class Music(commands.Cog):
         if track.thumbnail:
             embed.set_thumbnail(url=track.thumbnail)
         
-        # Add a link to the song
+        # Add the loop status and a link to the song
         embed.add_field(name="Source", value=f"[Click Here]({track.uri})", inline=True)
-        
-        # Add the loop status
-        loop_mode = self.loop_states.get(ctx.guild.id, 0)
+        loop_mode = self.loop_states.get(interaction.guild.id, 0)
         mode_names = { 0: 'Off', 1: 'Track Loop', 2: 'Queue Loop', }
         embed.add_field(name="Loop", value=mode_names[loop_mode], inline=True)
 
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command(name="queue", aliases=["q", "list"])
+    @app_commands.command(name="queue", description="Displays the music queue with interactive paging buttons.")
     @is_in_same_voice_channel()
-    async def queue_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
-        
+    async def queue_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player or (player.queue.is_empty and not player.is_playing()):
-            return await ctx.send(embed=info_embed(
-                description="The queue is currently empty.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="The queue is currently empty."),
+                ephemeral=True
+            )
 
-        # Combine current track and queue for viewing
-        all_tracks = []
-        if player.current:
-            all_tracks.append(player.current)
-        all_tracks.extend(list(player.queue))
-
-        # Remove the currently playing track from the list passed to QueueView, 
-        # as the view handles NP separately for pagination.
+        # Display queue view
         queue_tracks_for_view = list(player.queue)
-        
-        # Create and send the paginated view
         view = QueueView(
             tracks=queue_tracks_for_view, 
             current_track=player.current, 
             bot=self.bot
         )
-        await ctx.send(embed=view.get_page_embed(), view=view)
 
-    @commands.command(name="loop", aliases=['repeat'])
+        # Save message for on_timeout
+        response_message = await interaction.response.send_message(
+            embed=view.get_page_embed(), 
+            view=view
+        )
+        view.message = response_message
+
+    @app_commands.command(name="loop", description="Sets the playback loop mode.")
+    @app_commands.describe(mode="Choose the loop mode.")
     @is_in_same_voice_channel()
-    async def loop_command(self, ctx: commands.Context, mode: str = None):
-        guild_id = ctx.guild.id
-        current_mode = self.loop_states.get(guild_id, 0)
+    async def loop_command(self, interaction: discord.Interaction, mode: LoopMode):
+        guild_id = interaction.guild.id
+        mode_value = mode.value
         modes = { 'off': 0, 'track': 1, 'queue': 2, }
         mode_names = { 0: 'Off', 1: 'Track Loop (Current Song)', 2: 'Queue Loop (Playlist)', }
-        
-        # Display current mode
-        if mode is None:
-            return await ctx.send(embed=info_embed(
-                title="🔄 Loop Status",
-                description=f"Current loop mode: **{mode_names[current_mode]}**.\n"
-                            f"Usage: `!loop <track|queue|off>`",
-            ))
 
         # Modify mode
-        mode = mode.lower()
-        if mode not in modes:
-            return await ctx.send(embed=error_embed(
-                description=f"Invalid loop mode. Use: `track`, `queue`, or `off`.",
-            ))
-
-        new_mode = modes[mode]
+        new_mode = modes[mode_value]
         self.loop_states[guild_id] = new_mode
-        await ctx.send(embed=success_embed(
-            description=f"Loop mode set to: **{mode_names[new_mode]}**.",
-        ))
+        await interaction.response.send_message(
+            embed=success_embed(description=f"Loop mode set to: **{mode_names[new_mode]}**."),
+        )
 
-    @commands.command(name="shuffle")
+    @app_commands.command(name="shuffle", description="Randomly shuffles the order of all tracks in the queue.")
     @is_in_same_voice_channel()
-    async def shuffle_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
+    async def shuffle_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player or player.queue.is_empty:
-            return await ctx.send(embed=info_embed(
-                description="The queue is empty. Nothing to shuffle.",
-            ))
+            return await interaction.response.send_message(
+                embed=info_embed(description="The queue is empty. Nothing to shuffle."),
+                ephemeral=True
+            )
 
         # Shuffle the list in place
         queue_list = list(player.queue)
@@ -406,66 +399,49 @@ class Music(commands.Cog):
         # Replace the old queue with the shuffled list
         player.queue.clear()
         player.queue.extend(queue_list)
-        await ctx.send(embed=success_embed(
-            description=f"🔀 Shuffled **{len(queue_list)}** tracks in the queue!",
-        ))
+        await interaction.response.send_message(
+            embed=success_embed(description=f"🔀 Shuffled **{len(queue_list)}** tracks in the queue!"),
+        )
 
-    @commands.command(name="volume", aliases=['vol'])
+    @app_commands.command(name="volume", description="Sets the player volume or shows the interactive menu.")
     @is_in_same_voice_channel()
-    async def volume_command(self, ctx: commands.Context):
-        player: wavelink.Player = ctx.voice_client
+    async def volume_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client
         if not player:
-            return await ctx.send(embed=error_embed(
-                description="The bot is not connected to a voice channel.",
-            ))
+            return await interaction.response.send_message(
+                embed=error_embed(description="The bot is not connected to a voice channel."),
+                ephemeral=True
+            )
 
-        # If no number is provided, display the interactive selection menu
+        # Command without arugments
         view = VolumeView(player=player, bot=self.bot)
-        await ctx.send(embed=info_embed(
-            title="🔊 Adjust Volume",
-            description=f"Current volume is **{player.volume}%**. Please select a new volume level from the menu below.",
-        ))
+        await interaction.response.send_message(
+            embed=info_embed(
+                title="🔊 Adjust Volume",
+                description=f"Current volume is **{player.volume}%**. Please select a new volume level from the menu below."
+            ),
+            view=view,
+            ephemeral=True
+        )
 
-    @commands.command(name="leave", aliases=["l", "disconnect"])
+    @app_commands.command(name="leave", description="Disconnects the bot and clears the queue.")
     @is_in_same_voice_channel()
-    async def leave_command(self, ctx: commands.Context):
-        if not ctx.voice_client:
-            return await ctx.send(embed=error_embed(
-                description="The bot is not currently in a voice channel",
-            ))
+    async def leave_command(self, interaction: discord.Interaction):
+        player: wavelink.Player = interaction.guild.voice_client 
+        if not player:
+            return await interaction.response.send_message(
+                embed=error_embed(description="The bot is not currently in a voice channel"),
+                ephemeral=True
+            )
         
         # Clear the queue before disconnecting
-        player: wavelink.Player = ctx.voice_client
         player.queue.clear()
 
         # Disconnect the player
-        await ctx.voice_client.disconnect()
-        await ctx.send(embed=success_embed(
-            description="Disconnected from the voice channel",
-        ))
-
-    async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
-        # 
-        if isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
-            command_name = ctx.command.name
-            usage = f"Usage: `{ctx.prefix}{command_name} {ctx.command.signature}`"
-            return await ctx.send(embed=error_embed(
-                description=f"Missing or invalid argument. {usage}",
-                title="❌ Invalid Command Usage"
-            ))
-        #
-        elif isinstance(error, commands.CheckFailure):
-            await ctx.send(embed=error_embed(
-                description=str(error),
-            ))
-        #
-        else:
-            print(f"Unhandled command error in {ctx.command}: {error}")
-            await ctx.send(embed=error_embed(
-                title="🛑 Unhandled Error",
-                description="An unexpected error occurred while processing your command.",
-            ))
-            raise error # re-raise the error to be logged by discord.py
+        await player.disconnect()
+        await interaction.response.send_message(
+            embed=success_embed(description="Disconnected from the voice channel")
+        )
 
 # Setup function required to load the Cog into the bot
 async def setup(bot: commands.Bot):
