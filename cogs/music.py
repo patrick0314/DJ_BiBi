@@ -6,29 +6,7 @@ import wavelink
 from discord.ext import commands
 from config import LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
 from utils.embed import success_embed, error_embed, info_embed
-
-# --- General Check Function ---
-def is_in_voice_channel():
-    # Check if the command invoker is in ANY voice channel
-    async def predicate(ctx: commands.Context):
-        if ctx.author.voice:
-            return True
-        else:
-            raise commands.CheckFailure("You must be in a voice channel to use this command")
-
-    return commands.check(predicate)
-
-def is_in_same_voice_channel():
-    # Check if the command invoker is in the SAME voice channel as the bot
-    async def predicate(ctx: commands.Context):
-        if not ctx.voice_client:
-            return True
-        if ctx.author.voice and ctx.author.voice.channel == ctx.voice_client.channel:
-            return True
-        else:
-            raise commands.CheckFailure("You must be in the same voice channel as the bot to control playback")
-    
-    return commands.check(predicate)
+from utils.music_utils import is_in_voice_channel, is_in_same_voice_channel, QueueView, VolumeView
 
 # --- A Cog for Handling All Music-Related Commands ---
 class Music(commands.Cog):
@@ -359,28 +337,29 @@ class Music(commands.Cog):
     @is_in_same_voice_channel()
     async def queue_command(self, ctx: commands.Context):
         player: wavelink.Player = ctx.voice_client
+        
         if not player or (player.queue.is_empty and not player.is_playing()):
             return await ctx.send(embed=info_embed(
                 description="The queue is currently empty.",
             ))
 
-        queue_list = []
-        
-        # Add currently playing song
+        # Combine current track and queue for viewing
+        all_tracks = []
         if player.current:
-            queue_list.append(f"**Now Playing:** [{player.current.title}]({player.current.uri}) by {player.current.author}")
+            all_tracks.append(player.current)
+        all_tracks.extend(list(player.queue))
 
-        # Add tracks in the queue
-        for index, track in enumerate(player.queue):
-            if index >= 10:
-                queue_list.append(f"And {len(player.queue) - index} more track(s)...")
-                break
-            queue_list.append(f"**{index + 1}.** [{track.title}]({track.uri}) by {track.author}")
-
-        await ctx.send(embed=info_embed(
-            title="Music Queue",
-            description="\n".join(queue_list),
-        ))
+        # Remove the currently playing track from the list passed to QueueView, 
+        # as the view handles NP separately for pagination.
+        queue_tracks_for_view = list(player.queue)
+        
+        # Create and send the paginated view
+        view = QueueView(
+            tracks=queue_tracks_for_view, 
+            current_track=player.current, 
+            bot=self.bot
+        )
+        await ctx.send(embed=view.get_page_embed(), view=view)
 
     @commands.command(name="loop", aliases=['repeat'])
     @is_in_same_voice_channel()
@@ -433,28 +412,18 @@ class Music(commands.Cog):
 
     @commands.command(name="volume", aliases=['vol'])
     @is_in_same_voice_channel()
-    async def volume_command(self, ctx: commands.Context, volume: int = None):
+    async def volume_command(self, ctx: commands.Context):
         player: wavelink.Player = ctx.voice_client
         if not player:
             return await ctx.send(embed=error_embed(
                 description="The bot is not connected to a voice channel.",
             ))
 
-        # Display current volume
-        if volume is None:
-            return await ctx.send(embed=info_embed(
-                description=f"Current volume is **{player.volume}%**.",
-            ))
-        
-        # Modify volume
-        if not 0 <= volume <= 1000:
-            return await ctx.send(embed=error_embed(
-                description="Volume must be a number between 0 and 1000.",
-            ))
-
-        await player.set_volume(volume)
-        await ctx.send(embed=success_embed(
-            description=f"🔊 Volume set to **{volume}%**.",
+        # If no number is provided, display the interactive selection menu
+        view = VolumeView(player=player, bot=self.bot)
+        await ctx.send(embed=info_embed(
+            title="🔊 Adjust Volume",
+            description=f"Current volume is **{player.volume}%**. Please select a new volume level from the menu below.",
         ))
 
     @commands.command(name="leave", aliases=["l", "disconnect"])
@@ -477,9 +446,12 @@ class Music(commands.Cog):
 
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
         # 
-        if isinstance(error, commands.CheckFailure):
-            await ctx.send(embed=error_embed(
-                description=str(error),
+        if isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
+            command_name = ctx.command.name
+            usage = f"Usage: `{ctx.prefix}{command_name} {ctx.command.signature}`"
+            return await ctx.send(embed=error_embed(
+                description=f"Missing or invalid argument. {usage}",
+                title="❌ Invalid Command Usage"
             ))
         #
         elif isinstance(error, commands.CheckFailure):
